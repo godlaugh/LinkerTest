@@ -8,7 +8,6 @@ import java.net.UnknownHostException;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBarActivity;
 import android.view.LayoutInflater;
@@ -64,114 +63,124 @@ public class MainActivity extends ActionBarActivity {
 	 * A placeholder fragment containing a simple view.
 	 */
 	public static class PlaceholderFragment extends Fragment {
-		
-		private Thread thread_ = null;
 
 		public PlaceholderFragment()
 		{
 		}
-
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container,
-				Bundle savedInstanceState)
+		
+		public void test(final View rootView, final Boolean useMae)
 		{
-			final View rootView = inflater.inflate(R.layout.fragment_main, container,
-					false);
-			
-			if (null == thread_)
+			final TextView textView;
+			if (useMae)
 			{
-				final Handler handler = new Handler();
-				thread_ = new Thread(new Runnable() {
-					private Socket socket_ = null;
+				textView = (TextView)rootView.findViewById(R.id.text_mae);
+			}
+			else 
+			{
+				textView = (TextView)rootView.findViewById(R.id.text_normal);
+			}
+			textView.setText("testing...");
+			
+			Thread thread = new Thread(new Runnable() {
+				
+				@Override
+				public void run()
+				{
+					// TODO Auto-generated method stub
 					
-					@Override
-					public void run()
+					String ip = "115.182.64.21";
+					int lport = 7887;
+					
+					if (useMae)
 					{
-						// TODO Auto-generated method stub
+						String lPortStr =  LinkerMaeAdaptor.LinkerMaeAdaptorInit( "user1",ip, String.format("%d", lport) );
+						System.out.println("mae port is " + lPortStr);
+						if ( -1 == lport )
+						{
+							rootView.getHandler().post(new Runnable() {
+								
+								@Override
+								public void run()
+								{
+									// TODO Auto-generated method stub
+									textView.setText("mae port is -1");
+								}
+							});
+						}
+						lport = Integer.parseInt(lPortStr);
+						ip = "127.0.0.1";
+					}
+					
+					if (0 < lport)
+					{
 						DataInputStream in = null;
 						DataOutputStream out = null;
-						
-						if (null == socket_)
+						Socket socket = null;
+						try
 						{
-							String ip = "115.182.64.21";
-							String port = "7887";
-							String useri = "user1";
+							socket = new Socket(ip, lport);
 							
-							String local_port = LinkerMaeAdaptor.LinkerMaeAdaptorInit( useri,ip, port );
+							in = new DataInputStream(socket.getInputStream());
+							out = new DataOutputStream(socket.getOutputStream());
 							
-							System.out.println("port is " + local_port);
-							
-							int lport = Integer.parseInt(local_port);
-							
-							if ( -1 != lport )
+							final long millsBegin = System.currentTimeMillis();
+							for (int i = 0; i < 100; i++) 
 							{
-								try
+								out.writeBytes("hello:"+i);
+								
+								byte[] receiveBuf = new byte[2048];
+							
+								int len = in.read(receiveBuf);
+								
+								if (0 < len)
 								{
-//									socket_ = new Socket(ip, 7887);
-									socket_ = new Socket("127.0.0.1", lport);
-									
-									in = new DataInputStream(socket_.getInputStream());
-									out = new DataOutputStream(socket_.getOutputStream());
-									
-									for (int i = 0; i<10; i++) 
-									{
-										try
-										{
-											Thread.sleep(1000);
-										}
-										catch (InterruptedException e)
-										{
-											// TODO Auto-generated catch block
-											e.printStackTrace();
-										}
-										
-										out.writeBytes("hello:"+i);
-										
-										byte[] receiveBuf = new byte[2048];
-									
-										int len = in.read(receiveBuf);
-										
-										if (0 < len)
-										{
-											final String recvString = new String(receiveBuf, 0, len);
-											System.out.print("recv:" + recvString);
-											handler.post(new Runnable() {
-												
-												@Override
-												public void run()
-												{
-													// TODO Auto-generated method stub
-													((TextView)rootView.findViewById(R.id.text)).setText("recv:"+recvString);
-												}
-											});
-										}
-										else 
-										{
-											final int recvLen = len;
-											System.out.print(String.format("socket error! len=%d", len));
-handler.post(new Runnable() {
-													
-													@Override
-													public void run()
-													{
-														// TODO Auto-generated method stub
-													((TextView)rootView.findViewById(R.id.text)).setText(String.format("socket error! len=%d", recvLen));
-												}
-											});
-										}
-									}
+									final String recvString = new String(receiveBuf, 0, len);
+									System.out.print("recv:" + recvString);
+//									rootView.getHandler().post(new Runnable() {
+//										
+//										@Override
+//										public void run()
+//										{
+//											// TODO Auto-generated method stub
+//											textView.setText("recv:"+recvString);
+//										}
+//									});
 								}
-								catch (UnknownHostException e)
+								else 
 								{
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
-								catch (IOException e)
-								{
-									// TODO Auto-generated catch block
-									e.printStackTrace();
+									final int recvLen = len;
+									System.out.print(String.format("socket error! len=%d", len));
+									rootView.getHandler().post(new Runnable() {
+											
+										@Override
+										public void run()
+										{
+											// TODO Auto-generated method stub
+											textView.setText(String.format("socket error! len=%d", recvLen));
+										}
+									});
 								}
 							}
+							final long millsEnd = System.currentTimeMillis();
+							rootView.getHandler().post(new Runnable() {
+								
+								@Override
+								public void run()
+								{
+									// TODO Auto-generated method stub
+									textView.setText(String.format("duration: %d mills", millsEnd-millsBegin));
+								}
+							});
+						}
+						catch (UnknownHostException e)
+						{
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						catch (IOException e)
+						{
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
 						
 						if (null != in)
@@ -201,25 +210,69 @@ handler.post(new Runnable() {
 							out = null;
 						}
 						
-						if (null != socket_)
+						if (null != socket)
 						{
 							try
 							{
-								socket_.close();
+								socket.close();
 							}
 							catch (IOException e)
 							{
 								// TODO Auto-generated catch block
 								e.printStackTrace();
 							}
-							socket_ = null;
-
-							LinkerMaeAdaptor.LinkerMaeAdaptorUninit();
+							socket = null;
 						}
 					}
-				});
-				thread_.start();
-			}
+					
+					if (useMae)
+					{
+						LinkerMaeAdaptor.LinkerMaeAdaptorUninit();
+					}
+					
+					rootView.getHandler().post(new Runnable() {
+						
+						@Override
+						public void run()
+						{
+							// TODO Auto-generated method stub
+							rootView.findViewById(R.id.button_normal).setEnabled(true);
+							rootView.findViewById(R.id.button_mae).setEnabled(true);
+						}
+					});
+				}
+			});
+			thread.start();
+		}
+
+		@Override
+		public View onCreateView(LayoutInflater inflater, ViewGroup container,
+				Bundle savedInstanceState)
+		{
+			final View rootView = inflater.inflate(R.layout.fragment_main, container,
+					false);
+			rootView.findViewById(R.id.button_normal).setOnClickListener(new View.OnClickListener() {
+				
+				@Override
+				public void onClick(View v)
+				{
+					// TODO Auto-generated method stub
+					v.setEnabled(false);
+					rootView.findViewById(R.id.button_mae).setEnabled(false);
+					test(rootView, false);
+				}
+			});
+			rootView.findViewById(R.id.button_mae).setOnClickListener(new View.OnClickListener() {
+				
+				@Override
+				public void onClick(View v)
+				{
+					// TODO Auto-generated method stub
+					v.setEnabled(false);
+					rootView.findViewById(R.id.button_normal).setEnabled(false);
+					test(rootView, true);
+				}
+			});
 			
 			return rootView;
 		}

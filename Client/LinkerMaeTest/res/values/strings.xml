@@ -2,8 +2,9 @@
 <resources>
 
     <string name="app_name">LinkerMaeTest</string>
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-    <string name="test">Test</string>
+    <string name="normal">Normal</string>
+    <string name="mae">Mae</string>
+    <string name="speed">Speed</string>
 
 </resources>
