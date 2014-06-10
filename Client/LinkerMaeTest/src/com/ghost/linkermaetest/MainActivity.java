@@ -93,7 +93,7 @@ public class MainActivity extends ActionBarActivity {
 					
 					if (useMae)
 					{
-						String lPortStr =  LinkerMaeAdaptor.LinkerMaeAdaptorInit( "user1",ip, String.format("%d", lport) );
+						String lPortStr =  LinkerMaeAdaptor.LinkerMaeAdaptorInit(textView.getContext().getApplicationContext(), "user1",ip, String.format("%d", lport) );
 						System.out.println("mae port is " + lPortStr);
 						if ( -1 == lport )
 						{
@@ -123,43 +123,71 @@ public class MainActivity extends ActionBarActivity {
 							in = new DataInputStream(socket.getInputStream());
 							out = new DataOutputStream(socket.getOutputStream());
 							
-							final long millsBegin = System.currentTimeMillis();
-							for (int i = 0; i < 100; i++) 
+							int bufferSize = 1024*128;
+							byte[] sendData = new byte[bufferSize];
+							for (int i = 0; i < bufferSize; i++)
 							{
-								out.writeBytes("hello:"+i);
-								
-								byte[] receiveBuf = new byte[2048];
+								sendData[i] = (byte) ('A'+i%26);
+							}
+							byte[] receiveBuf = new byte[bufferSize];
 							
-								int len = in.read(receiveBuf);
-								
-								if (0 < len)
+							final long millsBegin = System.currentTimeMillis();
+							for (int i = 0; i < 30; i++) 
+							{
+								int totalLen = 0;
+								for (int j = 0; j < 8; j++)
 								{
-									final String recvString = new String(receiveBuf, 0, len);
-									System.out.print("recv:" + recvString);
-//									rootView.getHandler().post(new Runnable() {
-//										
-//										@Override
-//										public void run()
-//										{
-//											// TODO Auto-generated method stub
-//											textView.setText("recv:"+recvString);
-//										}
-//									});
-								}
-								else 
-								{
-									final int recvLen = len;
-									System.out.print(String.format("socket error! len=%d", len));
-									rootView.getHandler().post(new Runnable() {
-											
-										@Override
-										public void run()
+									out.write(sendData);
+									int recvLen = 0;
+									while (bufferSize > recvLen)
+									{
+										int len = in.read(receiveBuf, recvLen, bufferSize-recvLen);
+										if (0 < len)
 										{
-											// TODO Auto-generated method stub
-											textView.setText(String.format("socket error! len=%d", recvLen));
+											recvLen += len;
+//											final String recvString = new String(receiveBuf, 0, len);
+//											final int no = i+1;
+//											System.out.print("["+no+"]recv len:" + len);
+//											rootView.getHandler().post(new Runnable() {
+//												
+//												@Override
+//												public void run()
+//												{
+//													// TODO Auto-generated method stub
+//													textView.setText("["+no+"]recv len:"+len);
+//												}
+//											});
 										}
-									});
+										else 
+										{
+											final int fRecvLen = len;
+											System.out.print(String.format("socket error! len=%d", fRecvLen));
+											rootView.getHandler().post(new Runnable() {
+													
+												@Override
+												public void run()
+												{
+													// TODO Auto-generated method stub
+													textView.setText(String.format("socket error! len=%d", fRecvLen));
+												}
+											});
+											break;
+										}
+									}
+									totalLen += recvLen;
 								}
+								final int no = i+1;
+								final int fTotalLen = totalLen;
+								System.out.print("["+no+"]recv len:" + fTotalLen);
+								rootView.getHandler().post(new Runnable() {
+									
+									@Override
+									public void run()
+									{
+										// TODO Auto-generated method stub
+										textView.setText("["+no+"]recv len:"+fTotalLen);
+									}
+								});
 							}
 							final long millsEnd = System.currentTimeMillis();
 							rootView.getHandler().post(new Runnable() {
@@ -176,11 +204,31 @@ public class MainActivity extends ActionBarActivity {
 						{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
+							final String msg = e.getMessage();
+							rootView.getHandler().post(new Runnable() {
+								
+								@Override
+								public void run()
+								{
+									// TODO Auto-generated method stub
+									textView.setText(msg);
+								}
+							});
 						}
 						catch (IOException e)
 						{
 							// TODO Auto-generated catch block
 							e.printStackTrace();
+							final String msg = e.getMessage();
+							rootView.getHandler().post(new Runnable() {
+								
+								@Override
+								public void run()
+								{
+									// TODO Auto-generated method stub
+									textView.setText(msg);
+								}
+							});
 						}
 						
 						if (null != in)
